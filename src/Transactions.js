@@ -1,7 +1,7 @@
 import React from 'react'
 import { useState, useEffect } from 'react'
 import './Transactions.css'
-import { addTransactionList, getTransaction } from './services/userservice'
+import { addTransactionList, getTransaction,updateTransaction, deleteTransaction } from './services/userservice'
 
 const Transactions = () => {
     const[showForm,setShowForm] = useState(false)
@@ -14,11 +14,19 @@ const Transactions = () => {
     const[notes,setNotes] = useState("")
 
     const[transactions,setTransactions] = useState([])
+    const[editingId,setEditingId] = useState(null)
 
-    const handleTransaction = async () =>{
-        const id = transactions.length ? transactions[transactions.length - 1].id + 1 : 1
+
+    useEffect(() => {fetchTransaction()},[])
+
+    const fetchTransaction = async () => {
+        const response = await getTransaction()
+        setTransactions(response.data)
+    }
+
+    const handleTransaction = async (event) =>{
+      event.preventDefault()
         const addNewTransaction = {
-          id,
           type : transactionType,
           amount,
           category,
@@ -28,17 +36,60 @@ const Transactions = () => {
           notes
         }
 
-        const response = await addTransactionList(addNewTransaction)
-        const transactionList = prev => ([...prev , response.data])
-        setTransactions(transactionList)
+        if(editingId !== null){
+          await updateTransaction(editingId,addNewTransaction)
+          await fetchTransaction()
+        }
+        else{
+          const response = await addTransactionList(addNewTransaction)
+          const transactionList = prev => ([...prev , response.data])
+          setTransactions(transactionList)
+        }
+
+        setShowForm(false)
 
     }
 
-    useEffect(() => {fetchTransaction()},[])
+    const handleEdit = (transaction) =>{
+        setEditingId(transaction.id)
+        setTransactionType(transaction.type)
+        setAmount(transaction.amount)
+        setCategory(transaction.category)
+        setDate(transaction.date)
+        setPayment(transaction.paymentMethod)
+        setDescription(transaction.description)
+        setNotes(transaction.notes)
 
-    const fetchTransaction = async () => {
-        const response = await getTransaction()
-        setTransactions(response.data)
+        setShowForm(true)
+    }
+
+    const handleDelete = async (id) =>{
+        await  deleteTransaction(id)
+        fetchTransaction()
+    }
+
+    const paymentLabels = {
+      upi : "UPI",
+      creditcard : "Credit Card",
+      debitcard : "Debit Card",
+      cash : "Cash",
+      expense : "Expense",
+      income : "Income",
+      food : "Food",
+      bills : "Bills",
+      other : "Others",
+      rent : "Rent"
+
+    }
+
+    const formatDate = (datavalue) => {
+        const [year , month , day] = datavalue.split("-")
+
+        return new Intl.DateTimeFormat("en-IN", {
+          day : "2-digit",
+          month : "short",
+          year : "numeric"
+        }).format(new Date(year, month -1 , day))
     }
   return (
     <div>
@@ -126,8 +177,8 @@ const Transactions = () => {
               value={payment} onChange={(event) => setPayment(event.target.value)}
             >
               <option value="upi">UPI</option>
-              <option value="credit-card">Credit Card</option>
-              <option value="debit-card">Debit Card</option>d
+              <option value="creditcard">Credit Card</option>
+              <option value="debitcard">Debit Card</option>d
               <option value="cash">Cash</option>
             </select>
           </label>
@@ -156,7 +207,7 @@ const Transactions = () => {
             </button>
 
             <button type='submit' className='save-button'>
-              Save Transaction
+              {editingId ? "Save Changes" : "Save Transaction"}
             </button>
           </div>
 
@@ -175,19 +226,22 @@ const Transactions = () => {
               <th>Payement Method</th>
               <th>Description</th>
               <th>Notes</th>
+              <th>Actions</th>
             </tr>
           </thead>
 
           <tbody>
             {transactions.map((transaction) => (
               <tr key={transaction.id}>
-                <td>{transaction.type}</td>
+                <td>{paymentLabels[transaction.type]}</td>
                 <td>{transaction.amount}</td>
-                <td>{transaction.category}</td>
-                <td>{transaction.date}</td>
-                <td>{transaction.paymentMethod}</td>
+                <td>{paymentLabels[transaction.category]}</td>
+                <td>{formatDate(transaction.date)}</td>
+                <td>{paymentLabels[transaction.paymentMethod]}</td>
                 <td>{transaction.description}</td>
                 <td>{transaction.notes}</td>
+                <td><button onClick={() => handleDelete(transaction.id)}>Delete</button></td>
+                <td><button onClick={() => handleEdit(transaction)}>Edit</button></td>
               </tr>
 
             ))
