@@ -1,4 +1,4 @@
-import API from '../api/transactions'
+import API from '../api/etapi'
 
 export const getTransaction = () => API.get("/transactions")
 export const addTransactionList = (transaction) => API.post("/transactions",transaction)
